@@ -1,7 +1,7 @@
 # 📝 Mark Scope
 
 > 🌐 **在线即刻体验 / Live Web App (GitHub Pages)**: [https://wwbim.github.io/Mark-Scope/](https://wwbim.github.io/Mark-Scope/)  
-> 📦 **单文件直接访问 / Direct Single-File Access**: [https://wwbim.github.io/Mark-Scope/Deliverables/MarkScope.html](https://wwbim.github.io/Mark-Scope/Deliverables/MarkScope.html)  
+> 📦 **单文件直接访问 / Direct Single-File Access**: [https://wwbim.github.io/Mark-Scope/MarkScope.html](https://wwbim.github.io/Mark-Scope/MarkScope.html)  
 > 💾 **100% 离线单文件自包含 Markdown 所见即所得编辑器与阅读器**  
 > 💾 **100% Pure Client-Side Offline Standalone Markdown WYSIWYG Editor & Reader**
 
