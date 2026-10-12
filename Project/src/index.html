@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mark Scope - 100% 离线单文件 Markdown 编辑与阅读器</title>
+  
+  <!-- Inlined Vditor Stylesheet -->
+  <style id="vditorIndexStyle">
+    /* __INLINE_VDITOR_CSS__ */
+  </style>
+
+  <!-- Inlined KaTeX Stylesheet (with base64 fonts) -->
+  <style id="vditorKatexStyle">
+    /* __INLINE_KATEX_CSS__ */
+  </style>
+
+  <!-- Inlined Highlight.js Stylesheet -->
+  <style id="vditorHljsStyle">
+    /* __INLINE_HLJS_CSS__ */
+  </style>
+
+  <!-- Inlined Mark Scope Custom Shell Styles -->
+  <style id="markScopeCustomStyle">
+    /* __INLINE_SHELL_CSS__ */
+  </style>
+</head>
+<body class="theme-dark">
+
+  <!-- Crash Recovery Notification Banner -->
+  <div id="crash-recovery-banner" class="recovery-banner">
+    <div class="recovery-banner-content">
+      <span>⚠️</span>
+      <span id="recovery-banner-desc">检测到崩溃/异常退出前未保存的草稿。是否立即恢复？</span>
+    </div>
+    <div class="recovery-banner-actions">
+      <button id="btn-restore-draft" class="btn-banner btn-banner-restore">立即恢复</button>
+      <button id="btn-discard-draft" class="btn-banner btn-banner-discard">放弃草稿</button>
+    </div>
+  </div>
+
+  <!-- Top Application Header & Toolbar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="app-brand">
+        <span class="brand-icon">📝</span>
+        <span>Mark Scope</span>
+      </div>
+
+      <div class="file-title-wrapper" title="当前正在编辑的文件">
+        <span id="current-doc-title">欢迎体验_MarkScope.md</span>
+        <span id="file-dirty-indicator" class="file-dirty-badge" title="有未保存修改">●</span>
+      </div>
+
+      <!-- File Operations -->
+      <button id="btn-open-file" class="btn-cta" title="打开本地 Markdown 文件 (Ctrl+O)">
+        <span>📂 打开</span>
+      </button>
+      <button id="btn-save-file" class="btn-cta btn-primary" title="保存文档到本地磁盘 (Ctrl+S)">
+        <span>💾 保存</span>
+      </button>
+      <button id="btn-save-as" class="btn-cta" title="另存为新的 Markdown 文件 (Ctrl+Shift+S)">
+        <span>另存为...</span>
+      </button>
+
+      <!-- Export Dropdown -->
+      <div class="dropdown">
+        <button id="btn-export-dropdown" class="btn-cta" title="导出为其他独立格式">
+          <span>📤 导出 ▾</span>
+        </button>
+        <div id="export-menu" class="dropdown-menu">
+          <div id="action-export-html" class="dropdown-item">
+            <span>🌐 导出为独立 HTML</span>
+          </div>
+          <div id="action-export-pdf" class="dropdown-item">
+            <span>📄 导出为 PDF (打印排版)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Mode Switchers -->
+    <div class="header-center">
+      <div class="mode-switch-group">
+        <button class="mode-btn active" data-mode="ir" title="即时渲染 (Typora 式行内实时排版)">即时渲染</button>
+        <button class="mode-btn" data-mode="wysiwyg" title="所见即所得 (完全富文本排版)">所见即所得</button>
+        <button class="mode-btn" data-mode="sv" title="分屏预览 (传统双栏对照)">分屏对照</button>
+      </div>
+    </div>
+
+    <!-- Right: View & Theme Controls -->
+    <div class="header-right">
+      <button id="btn-toggle-outline" class="btn-cta active" title="显示/隐藏侧边大纲目录">
+        <span>📑 大纲</span>
+      </button>
+      <button id="btn-toggle-full-width" class="btn-cta" title="切换正文全宽模式 / 标准舒适阅读宽度">
+        <span>📏 全宽</span>
+      </button>
+      <button id="btn-reader-mode" class="btn-cta" title="进入纯净无干扰阅读模式">
+        <span>📖 阅读模式</span>
+      </button>
+      <button id="btn-toggle-theme" class="btn-cta" title="切换深色/浅色视觉主题">
+        <span>🌙 深色</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="app-workspace">
+    <!-- Collapsible Outline Sidebar -->
+    <aside id="outline-sidebar" class="outline-sidebar">
+      <div class="outline-header">
+        <span>文档大纲 (ToC)</span>
+        <button id="btn-collapse-sidebar" class="btn-icon-subtle" title="折叠侧边栏">◀</button>
+      </div>
+      <div id="outline-tree" class="outline-tree"></div>
+    </aside>
+
+    <!-- Editor Viewport -->
+    <section class="editor-viewport">
+      <div id="vditor-container"></div>
+    </section>
+  </main>
+
+  <!-- Bottom Statusbar (HUD) -->
+  <footer class="app-statusbar">
+    <div class="statusbar-left">
+      <span id="stat-save-status" class="status-item status-clean">✓ 已存盘</span>
+      <span>|</span>
+      <span class="status-item">UTF-8</span>
+    </div>
+
+    <div class="statusbar-center">
+      <span id="stat-chars">0 字符</span>
+      <span>•</span>
+      <span id="stat-words">0 词</span>
+      <span>•</span>
+      <span id="stat-lines">1 行</span>
+      <span>•</span>
+      <span id="stat-time">约 1 分钟阅读</span>
+    </div>
+
+    <div class="statusbar-right">
+      <span id="stat-mode">即时渲染 (IR)</span>
+      <span>|</span>
+      <span>Mark Scope v1</span>
+    </div>
+  </footer>
+
+  <!-- Floating Exit Button for Reader Mode -->
+  <button id="btn-exit-reader-mode" class="btn-floating-exit-reader" title="退出阅读模式 (快捷键: Esc)">
+    <span>✕ 退出阅读模式 (Esc)</span>
+  </button>
+
+  <!-- Drag & Drop Fullscreen Overlay -->
+  <div id="drag-drop-overlay" class="drag-overlay">
+    <div class="drag-overlay-box">
+      <div class="drag-overlay-icon">📥</div>
+      <div class="drag-overlay-text">释放鼠标即可打开该 Markdown 文件</div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Hidden Fallback File Input -->
+  <input type="file" id="file-picker-input" accept=".md,.markdown,.mdown,.mkd,.txt" style="display:none">
+
+  <!-- =====================================================================
+       Inlined JavaScript Bundles (with standard IDs to prevent network fetch)
+       ===================================================================== -->
+  <script id="vditorLuteScript">
+    /* __INLINE_LUTE_JS__ */
+  </script>
+  <script id="vditorIconScript">
+    /* __INLINE_ANT_ICONS_JS__ */
+  </script>
+  <script id="vditorHljsScript">
+    /* __INLINE_HLJS_JS__ */
+  </script>
+  <script id="vditorKatexScript">
+    /* __INLINE_KATEX_JS__ */
+  </script>
+  <script id="vditorMermaidScript">
+    /* __INLINE_MERMAID_JS__ */
+  </script>
+  <script id="vditorCoreScript">
+    /* __INLINE_VDITOR_JS__ */
+  </script>
+
+  <!-- Inlined Application Controllers -->
+  <script id="markScopeAppScripts">
+    /* __INLINE_DRAFT_MANAGER_JS__ */
+    /* __INLINE_FILE_IO_JS__ */
+    /* __INLINE_OUTLINE_JS__ */
+    /* __INLINE_TABLE_MANAGER_JS__ */
+    /* __INLINE_STATUSBAR_JS__ */
+    /* __INLINE_APP_JS__ */
+  </script>
+</body>
+</html>

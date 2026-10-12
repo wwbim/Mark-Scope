@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="0; url=Deliverables/MarkScope.html">
+  <title>Mark Scope - 100% 离线单文件 Markdown 编辑与阅读器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0f172a;
+      color: #94a3b8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(56, 189, 248, 0.2);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    a {
+      color: #38bdf8;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+  <script>
+    window.location.replace("Deliverables/MarkScope.html");
+  </script>
+</head>
+<body>
+  <div class="spinner"></div>
+  <p>正在载入 Mark Scope / Loading Mark Scope...</p>
+  <p><small>如未自动跳转，请点击 / If not redirected automatically: <a href="Deliverables/MarkScope.html">进入 Mark Scope / Open Mark Scope</a></small></p>
+</body>
+</html>
