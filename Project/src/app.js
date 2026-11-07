@@ -31,6 +31,7 @@ class MarkScopeApp {
     this.statusbar.init();
     this.draftManager.init();
     this.tableManager.init();
+    this.initPWA();
   }
 
   // Initialize Vditor in offline self-contained configuration
@@ -121,6 +122,14 @@ mark_scope_guard()
       cache: {
         enable: false
       },
+      focus: () => {
+        const vp = document.querySelector('.editor-viewport');
+        if (vp) vp.classList.add('is-focused');
+      },
+      blur: () => {
+        const vp = document.querySelector('.editor-viewport');
+        if (vp) vp.classList.remove('is-focused');
+      },
       input: (value) => {
         this.draftManager.onContentChange(value);
         this.outline.onContentChange(value);
@@ -133,6 +142,8 @@ mark_scope_guard()
         this.outline.refreshOutline();
         this.statusbar.onContentChange(defaultMarkdown, true);
         this.statusbar.updateMode(this.currentMode);
+        this.initEditorFocusTracker();
+        this.mountModeSwitchToToolbar();
         setTimeout(() => this.tableManager.enhanceAllTables(), 100);
       }
     });
@@ -288,6 +299,14 @@ mark_scope_guard()
       cache: {
         enable: false
       },
+      focus: () => {
+        const vp = document.querySelector('.editor-viewport');
+        if (vp) vp.classList.add('is-focused');
+      },
+      blur: () => {
+        const vp = document.querySelector('.editor-viewport');
+        if (vp) vp.classList.remove('is-focused');
+      },
       input: (val) => {
         this.draftManager.onContentChange(val);
         this.outline.onContentChange(val);
@@ -296,7 +315,68 @@ mark_scope_guard()
       after: () => {
         this.statusbar.updateMode(mode);
         this.outline.refreshOutline();
+        this.initEditorFocusTracker();
+        this.mountModeSwitchToToolbar();
         setTimeout(() => this.tableManager.enhanceAllTables(), 100);
+      }
+    });
+  }
+
+  // Ensure mode switch group exists and is up to date
+  ensureModeSwitchGroup() {
+    let modeGroup = document.getElementById('mode-switch-group');
+    if (!modeGroup) {
+      modeGroup = document.createElement('div');
+      modeGroup.id = 'mode-switch-group';
+      modeGroup.className = 'mode-switch-group';
+      modeGroup.innerHTML = `
+        <button class="mode-btn ${this.currentMode === 'ir' ? 'active' : ''}" data-mode="ir" title="即时渲染 (Typora 式行内实时排版)">即时渲染</button>
+        <button class="mode-btn ${this.currentMode === 'wysiwyg' ? 'active' : ''}" data-mode="wysiwyg" title="所见即所得 (完全富文本排版)">所见即所得</button>
+        <button class="mode-btn ${this.currentMode === 'sv' ? 'active' : ''}" data-mode="sv" title="分屏预览 (传统双栏对照)">分屏对照</button>
+      `;
+      modeGroup.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const targetMode = btn.getAttribute('data-mode');
+          this.switchEditorMode(targetMode);
+        });
+      });
+    } else {
+      modeGroup.querySelectorAll('.mode-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-mode') === this.currentMode);
+      });
+    }
+    return modeGroup;
+  }
+
+  // Mount mode switch buttons to the far left of floating Vditor toolbar
+  mountModeSwitchToToolbar() {
+    const toolbar = document.querySelector('.vditor-toolbar');
+    if (!toolbar) return;
+    const modeGroup = this.ensureModeSwitchGroup();
+    if (!toolbar.contains(modeGroup)) {
+      let divider = toolbar.querySelector('.mode-toolbar-divider');
+      if (!divider) {
+        divider = document.createElement('div');
+        divider.className = 'mode-toolbar-divider';
+      }
+      toolbar.prepend(divider);
+      toolbar.prepend(modeGroup);
+    }
+  }
+
+  // Track editor focus state to smoothly darken background
+  initEditorFocusTracker() {
+    const viewport = document.querySelector('.editor-viewport');
+    if (!viewport || viewport.dataset.focusTrackerBound) return;
+    viewport.dataset.focusTrackerBound = 'true';
+
+    viewport.addEventListener('focusin', () => {
+      viewport.classList.add('is-focused');
+    });
+    viewport.addEventListener('focusout', (e) => {
+      if (!viewport.contains(e.relatedTarget)) {
+        viewport.classList.remove('is-focused');
       }
     });
   }
@@ -367,6 +447,38 @@ mark_scope_guard()
         this.exitReaderMode();
       }
     });
+  }
+
+  // PWA Service Worker & File Handling API
+  initPWA() {
+    // Only register service worker over HTTPS or localhost, completely silent on file:///
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      window.addEventListener('load', () => {
+        const swPath = location.pathname.includes('/Deliverables/') ? '../sw.js' : './sw.js';
+        navigator.serviceWorker.register(swPath).then((reg) => {
+          console.log('[MarkScope] PWA Service Worker registered:', reg.scope);
+        }).catch((err) => {
+          console.warn('[MarkScope] SW registration note:', err);
+        });
+      });
+    }
+
+    // PWA File Handling API (opens .md files directly when launched as default app)
+    if ('launchQueue' in window && 'files' in window.LaunchParams.prototype) {
+      window.launchQueue.setConsumer(async (launchParams) => {
+        if (!launchParams.files || launchParams.files.length === 0) return;
+        try {
+          const fileHandle = launchParams.files[0];
+          const file = await fileHandle.getFile();
+          const text = await file.text();
+          this.fileIO.currentFileHandle = fileHandle;
+          this.loadDocument(text, file.name);
+          this.showToast(`已通过桌面文件关联打开: ${file.name}`, 'success');
+        } catch (err) {
+          console.error('[MarkScope] Failed to open file via launchQueue:', err);
+        }
+      });
+    }
   }
 
   // Toast Notification System

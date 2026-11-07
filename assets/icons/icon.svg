@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer Frame -->
+  <rect x="24" y="24" width="464" height="464" rx="104" fill="url(#bgGrad)" stroke="#38bdf8" stroke-width="10"/>
+  <!-- Inner Subtle Stroke -->
+  <rect x="36" y="36" width="440" height="440" rx="94" fill="none" stroke="#334155" stroke-width="4"/>
+  <!-- Letter M -->
+  <polygon points="100,350 100,170 150,170 210,260 270,170 320,170 320,350 275,350 275,240 225,310 195,310 145,240 145,350" fill="#f8fafc"/>
+  <!-- Down Arrow -->
+  <polygon points="380,170 415,170 415,275 380,275" fill="url(#skyGrad)"/>
+  <polygon points="350,270 445,270 397.5,350" fill="url(#skyGrad)"/>
+  <!-- Scope Dot -->
+  <circle cx="260" cy="405" r="8" fill="#38bdf8"/>
+</svg>

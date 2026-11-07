@@ -1,0 +1,46 @@
+{
+  "name": "Mark Scope - 离线 Markdown 编辑与阅读器",
+  "short_name": "Mark Scope",
+  "description": "100% 离线单文件 Markdown 所见即所得编辑器与阅读器 / 100% Offline Standalone Markdown WYSIWYG Editor & Reader",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "any",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "./assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./Deliverables/MarkScope.html",
+      "name": "Markdown Document",
+      "accept": {
+        "text/markdown": [".md", ".markdown", ".mdown", ".mkd"]
+      },
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

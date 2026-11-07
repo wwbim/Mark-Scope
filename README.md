@@ -1,6 +1,8 @@
 # 📝 Mark Scope
 
 > 🌐 **在线即刻体验 / Live Web App (GitHub Pages)**: [https://wwbim.github.io/Mark-Scope/](https://wwbim.github.io/Mark-Scope/)  
+> 推荐安装为PWA应用，界面更简洁，依然无需互联网工作
+> Recommend to install it as an PWA application-name, simpler UI, no internet required still
 > 📦 **单文件直接访问 / Direct Single-File Access**: [https://wwbim.github.io/Mark-Scope/Deliverables/MarkScope.html](https://wwbim.github.io/Mark-Scope/Deliverables/MarkScope.html)  
 > 💾 **100% 离线单文件自包含 Markdown 所见即所得编辑器与阅读器**  
 > 💾 **100% Pure Client-Side Offline Standalone Markdown WYSIWYG Editor & Reader**
@@ -107,8 +109,14 @@ On top of the Vditor foundation, **Mark Scope** underwent deep offline single-fi
   Introduced Reader Mode to hide all toolbars and editing controls, leaving only pristine rendered prose with an unobtrusive exit button in the corner.
 
 ### 10. HUD 实时文档度量状态栏 / Live Document Statistics HUD
-- **创新 / Enhancement**: 底部 HUD 状态栏实时统计字符数、单词数、行数、预估阅读耗时、当前编辑模式（IR/所见即所得/分屏）以及已保存/未保存脏状态提示。  
+- **改进 / Enhancement**: 底部 HUD 状态栏实时统计字符数、单词数、行数、预估阅读耗时、当前编辑模式（IR/所见即所得/分屏）以及已保存/未保存脏状态提示。  
   A bottom HUD status bar delivers real-time word count, character count, line count, estimated reading duration, editing mode indicator, and disk clean/dirty badges.
+
+### 11. PWA 渐进式应用安装与系统级文件关联 / PWA Standalone App & Desktop File Association
+- **痛点 / Pain Point**: 传统网页应用无法在无网络环境下完全自立运行，亦无法作为操作系统的默认文本编辑器直接双击打开本地文件。  
+  Standard web applications fail to operate reliably without network connectivity, nor can they act as system-level default editors for local disk files.
+- **改进 / Enhancement**: 深度集成渐进式 Web 应用 (PWA) 规范，提供全套标准清单 (`manifest.json`)、高分辨率矢量图标套件与 Service Worker 零丢包极速离线缓存；支持在 Chrome / Edge 中一键点击地址栏【安装应用】脱离浏览器标签页运行；集成 File Handling API，可在桌面系统中将 Mark Scope 设为 `.md` 文件的系统默认打开方式，双击本地 Markdown 文件即可直接唤起 Mark Scope 独立窗口并绑定编辑保存句柄。  
+  Equipped with standard `manifest.json`, high-resolution vector icon suite, and Service Worker offline caching. Clicking the browser install button launches it as a standalone desktop app. Integrated File Handling API allows users to set Mark Scope as the OS default handler for `.md` files, opening them directly into the standalone window with bound file handles.
 
 ---
 
@@ -130,11 +138,17 @@ On top of the Vditor foundation, **Mark Scope** underwent deep offline single-fi
 
 ```
 Mark-Scope/
-├── index.html               # GitHub Pages 快速入口与重定向 / GitHub Pages entry redirect
+├── index.html               # GitHub Pages 快速入口与 PWA 壳体 / GitHub Pages entry & PWA shell
+├── manifest.json            # PWA 应用配置清单与文件关联协议 / Web App Manifest & File Handlers
+├── sw.js                    # Service Worker 离线守护进程与资源缓存 / Offline Service Worker cache
 ├── README.md                # 中英双语项目详尽说明文档 / Comprehensive bilingual documentation
+├── assets/                  # 高清应用图标与 Favicon / High-res app icons & favicon
+│   └── icons/               # 192px, 512px, SVG 矢量图标 / 192px, 512px, and vector SVG icons
 ├── Deliverables/            # 正式发布交付目录 / Production Deliverables
 │   ├── MarkScope.html       # 100% 离线自包含单文件（核心主产物） / Standalone offline single-file HTML
 │   ├── index.html           # 镜像访问入口 / Mirror access entry
+│   ├── manifest.json        # 交付目录 PWA 镜像清单 / PWA manifest mirror
+│   ├── sw.js                # 交付目录 PWA 离线工作进程 / Service Worker mirror
 │   └── CHANGELOG.md         # 详细版本演进与工时统计档案 / Detailed version history & metrics
 └── Project/                 # 源码与离线打包构建工程 / Source code & build pipeline
     ├── src/                 # 外壳 UI、控制器与智能表格模块 / Shell UI, controllers & table engine

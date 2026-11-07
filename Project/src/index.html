@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mark Scope - 100% 离线单文件 Markdown 编辑与阅读器</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   
   <!-- Inlined Vditor Stylesheet -->
   <style id="vditorIndexStyle">
@@ -47,11 +53,6 @@
         <span>Mark Scope</span>
       </div>
 
-      <div class="file-title-wrapper" title="当前正在编辑的文件">
-        <span id="current-doc-title">欢迎体验_MarkScope.md</span>
-        <span id="file-dirty-indicator" class="file-dirty-badge" title="有未保存修改">●</span>
-      </div>
-
       <!-- File Operations -->
       <button id="btn-open-file" class="btn-cta" title="打开本地 Markdown 文件 (Ctrl+O)">
         <span>📂 打开</span>
@@ -79,20 +80,16 @@
       </div>
     </div>
 
-    <!-- Center: Mode Switchers -->
-    <div class="header-center">
-      <div class="mode-switch-group">
-        <button class="mode-btn active" data-mode="ir" title="即时渲染 (Typora 式行内实时排版)">即时渲染</button>
-        <button class="mode-btn" data-mode="wysiwyg" title="所见即所得 (完全富文本排版)">所见即所得</button>
-        <button class="mode-btn" data-mode="sv" title="分屏预览 (传统双栏对照)">分屏对照</button>
+    <!-- Window-Centered File Title (Decoupled from Left & Right Buttons) -->
+    <div class="header-window-center">
+      <div class="file-title-wrapper" title="当前正在编辑的文件">
+        <span id="current-doc-title">欢迎体验_MarkScope.md</span>
+        <span id="file-dirty-indicator" class="file-dirty-badge" title="有未保存修改">●</span>
       </div>
     </div>
 
     <!-- Right: View & Theme Controls -->
     <div class="header-right">
-      <button id="btn-toggle-outline" class="btn-cta active" title="显示/隐藏侧边大纲目录">
-        <span>📑 大纲</span>
-      </button>
       <button id="btn-toggle-full-width" class="btn-cta" title="切换正文全宽模式 / 标准舒适阅读宽度">
         <span>📏 全宽</span>
       </button>
@@ -107,37 +104,78 @@
 
   <!-- Main Workspace -->
   <main class="app-workspace">
-    <!-- Collapsible Outline Sidebar -->
-    <aside id="outline-sidebar" class="outline-sidebar">
-      <div class="outline-header">
-        <span>文档大纲 (ToC)</span>
-        <button id="btn-collapse-sidebar" class="btn-icon-subtle" title="折叠侧边栏">◀</button>
-      </div>
-      <div id="outline-tree" class="outline-tree"></div>
-    </aside>
-
-    <!-- Editor Viewport -->
+    <!-- Editor Viewport (Full width available) -->
     <section class="editor-viewport">
       <div id="vditor-container"></div>
     </section>
   </main>
 
-  <!-- Bottom Statusbar (HUD) -->
+  <!-- Floating Right-hand Outline & Stats Widget -->
+  <aside id="ms-float-outline-container" class="ms-float-outline-container">
+    <!-- Collapsed State: Vertical Dashes (Screenshot 2) -->
+    <div id="ms-outline-dashes" class="ms-outline-dashes" title="悬停展开大纲与统计面板"></div>
+
+    <!-- Expanded State: Floating Panel (Screenshot 1) -->
+    <div id="ms-outline-panel" class="ms-outline-panel">
+      <!-- Panel Header with Tabs & Pin -->
+      <div class="ms-panel-header">
+        <div class="ms-tab-group">
+          <button id="tab-btn-outline" class="ms-tab-btn active" title="大纲目录">
+            <span class="tab-icon">T</span>
+            <span class="tab-label">Outline</span>
+          </button>
+          <button id="tab-btn-stats" class="ms-tab-btn" title="文档统计">
+            <svg class="tab-icon" viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+              <path d="M4 19h16v2H4zm3-4h2v4H7zm4-8h2v12h-2zm4 4h2v8h-2z"/>
+            </svg>
+            <span class="tab-label">Stats</span>
+          </button>
+        </div>
+        <button id="btn-pin-outline" class="ms-pin-btn" title="固定面板 (保持显现) / 再次点击取消固定">
+          <svg class="pin-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M16 9V4l1 0V2H7v2l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1.03 1 1.03-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Tab View 1: Outline with 6-level Heading Filter -->
+      <div id="view-tab-outline" class="ms-tab-view active">
+        <!-- 6-level Heading Filter Slider Track -->
+        <div class="level-filter-wrapper" title="点击选择大纲显示的最大标题层级 (H1~H6)">
+          <div class="level-track-bg"></div>
+          <div id="level-track-fill" class="level-track-fill"></div>
+          <div class="level-dots-container">
+            <button class="level-dot active" data-level="1" title="仅显示到 H1">1</button>
+            <button class="level-dot active" data-level="2" title="显示到 H2">2</button>
+            <button class="level-dot active" data-level="3" title="显示到 H3">3</button>
+            <button class="level-dot active" data-level="4" title="显示到 H4">4</button>
+            <button class="level-dot active" data-level="5" title="显示到 H5">5</button>
+            <button class="level-dot active" data-level="6" title="显示到 H6">6</button>
+          </div>
+        </div>
+        <!-- Dynamic Outline Tree -->
+        <div id="float-outline-list" class="float-outline-list"></div>
+      </div>
+
+      <!-- Tab View 2: Stats (仿照大纲形式，每行一项指标) -->
+      <div id="view-tab-stats" class="ms-tab-view">
+        <div class="float-stats-list">
+          <div class="stats-row"><span class="stats-label">字数：</span><span id="stat-val-words" class="stats-value">0</span></div>
+          <div class="stats-row"><span class="stats-label">句数：</span><span id="stat-val-sentences" class="stats-value">0</span></div>
+          <div class="stats-row"><span class="stats-label">段数：</span><span id="stat-val-paragraphs" class="stats-value">0</span></div>
+          <div class="stats-row"><span class="stats-label">字符数：</span><span id="stat-val-chars" class="stats-value">0</span></div>
+          <div class="stats-row"><span class="stats-label">最后保存：</span><span id="stat-val-last-saved" class="stats-value">-</span></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Bottom Statusbar (HUD - Simplified) -->
   <footer class="app-statusbar">
     <div class="statusbar-left">
       <span id="stat-save-status" class="status-item status-clean">✓ 已存盘</span>
       <span>|</span>
       <span class="status-item">UTF-8</span>
-    </div>
-
-    <div class="statusbar-center">
-      <span id="stat-chars">0 字符</span>
-      <span>•</span>
-      <span id="stat-words">0 词</span>
-      <span>•</span>
-      <span id="stat-lines">1 行</span>
-      <span>•</span>
-      <span id="stat-time">约 1 分钟阅读</span>
     </div>
 
     <div class="statusbar-right">

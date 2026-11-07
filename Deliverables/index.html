@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mark Scope - 100% 离线单文件 Markdown 编辑与阅读器</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   
   <!-- Inlined Vditor Stylesheet -->
   <style id="vditorIndexStyle">
@@ -2116,7 +2122,8 @@ body, html {
   user-select: none;
   z-index: 100;
   gap: 12px;
-  overflow-x: auto;
+  position: relative;
+  overflow: visible;
 }
 
 .header-left {
@@ -2124,6 +2131,7 @@ body, html {
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+  z-index: 102;
 }
 
 .app-brand {
@@ -2142,21 +2150,52 @@ body, html {
   font-size: 18px;
 }
 
-.file-title-wrapper {
+/* Window-Centered File Title: 严格相对整个视口物理居中，不受左右按钮增减影响 */
+.header-window-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
+  justify-content: center;
+  height: var(--header-height);
+  max-width: 40vw;
+  pointer-events: none;
+  z-index: 101;
+}
+
+.file-title-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
   background-color: var(--bg-hover);
-  padding: 4px 10px;
+  height: 28px;
+  padding: 0 12px;
   border-radius: 6px;
   border: 1px solid var(--border-subtle);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
-  max-width: 220px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   flex-shrink: 0;
+  pointer-events: auto;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+#current-doc-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  max-width: calc(40vw - 40px);
+  line-height: 1;
 }
 
 .file-dirty-badge {
@@ -2166,18 +2205,12 @@ body, html {
   display: none;
 }
 
-.header-center {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
 .header-right {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  z-index: 102;
 }
 
 /* 6px Rounded Action Buttons matching BIM Scope aesthetic */
@@ -2230,29 +2263,54 @@ body, html {
   100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
 }
 
-/* Mode Switch Group */
+/* Mode Switch Group (Embedded in Floating Toolbar) */
 .mode-switch-group {
   display: flex;
-  background-color: var(--bg-primary);
+  background-color: rgba(0, 0, 0, 0.28);
   padding: 2px;
   border-radius: 6px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-subtle);
   flex-shrink: 0;
   white-space: nowrap;
 }
 
+body.theme-light .mode-switch-group {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
 .mode-btn {
-  height: 28px;
-  padding: 0 10px;
+  height: 25px;
+  padding: 0 8px;
   border-radius: 4px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: all 0.15s ease;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mode-btn:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.mode-btn.active {
+  background-color: var(--brand-primary);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.4);
+}
+
+.mode-toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background-color: var(--border-color);
+  margin: 0 8px;
   flex-shrink: 0;
 }
 
@@ -2320,116 +2378,394 @@ body, html {
   position: relative;
 }
 
-/* Outline Sidebar */
-.outline-sidebar {
-  width: var(--sidebar-width);
-  min-width: var(--sidebar-width);
-  height: 100%;
-  background-color: var(--bg-sidebar);
-  border-right: 1px solid var(--border-color);
+/* ==========================================================================
+   Right-hand Floating Outline & Stats Widget (Screenshot 1 & 2)
+   ========================================================================== */
+.ms-float-outline-container {
+  position: fixed;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1200;
   display: flex;
-  flex-direction: column;
-  transition: all 0.24s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: auto;
   user-select: none;
 }
 
-.outline-sidebar.collapsed {
-  width: 0 !important;
-  min-width: 0 !important;
-  border-right: none;
+/* Collapsed State: Vertical Dashes - 柔化淡入背景，无硬边框，彻底避开右侧滚动条 */
+.ms-outline-dashes {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+  padding: 12px 10px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  z-index: 1205;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.outline-header {
-  height: 38px;
-  padding: 0 12px;
+/* 柔和高斯模糊光晕底层：羽化平滑淡出至背景，绝无生硬面板折角与边框 */
+.ms-outline-dashes::before {
+  content: '';
+  position: absolute;
+  inset: -6px -10px;
+  background-color: rgba(24, 24, 27, 0.85);
+  border-radius: 20px;
+  filter: blur(10px);
+  -webkit-filter: blur(10px);
+  z-index: -1;
+  pointer-events: none;
+  transition: background-color 0.2s ease;
+}
+
+body.theme-light .ms-outline-dashes::before {
+  background-color: rgba(255, 255, 255, 0.85);
+}
+
+.ms-dash {
+  height: 3px;
+  border-radius: 2px;
+  background-color: #52525b; /* 暗灰色横线 */
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  align-self: flex-end;
+  margin-right: 0 !important; /* 全部靠右对齐 */
+}
+
+/* 最高级大纲（如 H1）：较长（22px），全部靠右对齐 */
+.ms-dash.level-top {
+  width: 22px;
+  margin-right: 0 !important;
+}
+
+/* 次级大纲（如 H2）：较短（13px），全部靠右对齐 */
+.ms-dash.level-sub {
+  width: 13px;
+  margin-right: 0 !important;
+}
+
+.ms-dash:hover {
+  background-color: #94a3b8;
+}
+
+/* 单点高亮：当前聚焦横线高亮为纯白，略微拉长 */
+.ms-dash.active {
+  background-color: #ffffff !important;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 255, 255, 0.3) !important;
+}
+
+.ms-dash.level-top.active {
+  width: 26px;
+  margin-right: 0 !important;
+}
+
+.ms-dash.level-sub.active {
+  width: 17px;
+  margin-right: 0 !important;
+}
+
+/* When panel is visible (hover or pinned), dashes smoothly fade */
+.ms-float-outline-container.is-open .ms-outline-dashes,
+.ms-float-outline-container.is-pinned .ms-outline-dashes {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(8px);
+}
+
+/* Expanded State: Floating Panel (Screenshot 1) */
+.ms-outline-panel {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%) translateX(12px) scale(0.96);
+  width: 280px;
+  max-width: calc(100vw - 32px);
+  max-height: 78vh;
+  background-color: rgba(24, 24, 27, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(63, 63, 70, 0.7);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.1);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1210;
+}
+
+/* Hover, open or pinned reveals the panel */
+.ms-float-outline-container:hover .ms-outline-panel,
+.ms-float-outline-container.is-open .ms-outline-panel,
+.ms-float-outline-container.is-pinned .ms-outline-panel {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0) scale(1);
+}
+
+/* Panel Header */
+.ms-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border-subtle);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
+  padding-bottom: 2px;
 }
 
-.btn-icon-subtle {
-  background: transparent;
+.ms-tab-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: rgba(39, 39, 42, 0.7);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid rgba(63, 63, 70, 0.4);
+}
+
+.ms-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
   border: none;
-  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  color: #a1a1aa;
+  background: transparent;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.ms-tab-btn:hover {
+  color: #ffffff;
+}
+
+.ms-tab-btn.active {
+  background-color: #27272a;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.ms-tab-btn .tab-icon {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.ms-pin-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #71717a;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.ms-pin-btn:hover {
+  color: #ffffff;
+  background-color: rgba(63, 63, 70, 0.5);
+}
+
+.ms-pin-btn.pinned {
+  color: #38bdf8;
+  background-color: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+/* Tab Views */
+.ms-tab-view {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ms-tab-view.active {
+  display: flex;
+}
+
+/* 6-Level Heading Filter Slider Track */
+.level-filter-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  margin-bottom: 2px;
+}
+
+.level-track-bg {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 2px;
+  background-color: #3f3f46;
+  z-index: 1;
+}
+
+.level-track-fill {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 2px;
+  max-width: calc(100% - 36px);
+  width: 0%;
+  background-color: #38bdf8;
+  z-index: 2;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+}
+
+.level-dots-container {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 3;
+}
+
+.level-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: #18181b;
+  border: 2px solid #52525b;
+  color: transparent;
+  font-size: 0;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+  position: relative;
 }
 
-.btn-icon-subtle:hover {
-  color: var(--text-primary);
-  background-color: var(--bg-hover);
+.level-dot:hover {
+  border-color: #38bdf8;
+  transform: scale(1.15);
 }
 
-.outline-tree {
-  flex: 1;
+.level-dot.active {
+  background-color: #38bdf8;
+  border-color: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+/* Outline List */
+.float-outline-list {
+  max-height: calc(75vh - 120px);
   overflow-y: auto;
-  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 4px;
 }
 
-.outline-item {
+.float-outline-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.float-outline-list::-webkit-scrollbar-thumb {
+  background: rgba(82, 82, 91, 0.5);
+  border-radius: 2px;
+}
+
+.float-outline-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  font-size: 12.5px;
-  color: var(--text-secondary);
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #d4d4d8;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: all 0.15s ease;
+  line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.outline-item:hover {
-  background-color: var(--bg-hover);
-  color: var(--text-primary);
+.float-outline-item:hover {
+  background-color: rgba(63, 63, 70, 0.5);
+  color: #ffffff;
 }
 
-.outline-item.active {
-  background-color: var(--brand-glow);
-  color: var(--brand-primary);
+.float-outline-item.active {
+  background-color: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
   font-weight: 600;
-  border-left: 2px solid var(--brand-primary);
 }
 
-.outline-level-tag {
-  font-size: 10px;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  color: var(--text-muted);
-  opacity: 0.8;
-  min-width: 18px;
-}
+.float-outline-item.level-1 { padding-left: 6px; font-weight: 500; }
+.float-outline-item.level-2 { padding-left: 18px; }
+.float-outline-item.level-3 { padding-left: 28px; }
+.float-outline-item.level-4 { padding-left: 38px; }
+.float-outline-item.level-5 { padding-left: 48px; }
+.float-outline-item.level-6 { padding-left: 56px; }
 
-.outline-item.level-1 { padding-left: 12px; font-weight: 600; }
-.outline-item.level-2 { padding-left: 22px; }
-.outline-item.level-3 { padding-left: 32px; }
-.outline-item.level-4 { padding-left: 42px; }
-.outline-item.level-5 { padding-left: 52px; }
-.outline-item.level-6 { padding-left: 62px; }
-
-.outline-title-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.outline-empty {
-  padding: 24px 16px;
+.float-outline-empty {
+  padding: 20px 8px;
   text-align: center;
   font-size: 12px;
-  color: var(--text-muted);
+  color: #71717a;
+}
+
+/* Stats Tab List */
+.float-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 4px;
+}
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
   line-height: 1.6;
+  color: #d4d4d8;
+  padding: 5px 8px;
+  border-radius: 6px;
+  transition: background-color 0.12s ease;
+}
+
+.stats-row:hover {
+  background-color: rgba(63, 63, 70, 0.35);
+}
+
+.stats-label {
+  color: #a1a1aa;
+  font-weight: 500;
+  min-width: 82px;
+}
+
+.stats-value {
+  color: #ffffff;
+  font-weight: 600;
+  font-family: var(--font-mono);
 }
 
 /* Heading Jump Animation */
@@ -2449,18 +2785,199 @@ body, html {
   overflow: hidden;
   position: relative;
   background-color: var(--bg-primary);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Editor Focus Deep Immersion: 焦点在编辑区内时，背景颜色平滑调深至 #050811 (深色主题) / #e2e8f0 (浅色主题) */
+.editor-viewport:focus-within,
+.editor-viewport.is-focused,
+.editor-viewport:focus-within .vditor,
+.editor-viewport.is-focused .vditor,
+.editor-viewport:focus-within .vditor-content,
+.editor-viewport.is-focused .vditor-content,
+.editor-viewport:focus-within .vditor-reset,
+.editor-viewport.is-focused .vditor-reset,
+.editor-viewport:focus-within .vditor-ir,
+.editor-viewport.is-focused .vditor-ir,
+.editor-viewport:focus-within .vditor-wysiwyg,
+.editor-viewport.is-focused .vditor-wysiwyg,
+.editor-viewport:focus-within .vditor-sv,
+.editor-viewport.is-focused .vditor-sv {
+  background-color: #050811 !important;
+}
+
+body.theme-light .editor-viewport:focus-within,
+body.theme-light .editor-viewport.is-focused,
+body.theme-light .editor-viewport:focus-within .vditor,
+body.theme-light .editor-viewport.is-focused .vditor,
+body.theme-light .editor-viewport:focus-within .vditor-content,
+body.theme-light .editor-viewport.is-focused .vditor-content,
+body.theme-light .editor-viewport:focus-within .vditor-reset,
+body.theme-light .editor-viewport.is-focused .vditor-reset,
+body.theme-light .editor-viewport:focus-within .vditor-ir,
+body.theme-light .editor-viewport.is-focused .vditor-ir,
+body.theme-light .editor-viewport:focus-within .vditor-wysiwyg,
+body.theme-light .editor-viewport.is-focused .vditor-wysiwyg,
+body.theme-light .editor-viewport:focus-within .vditor-sv,
+body.theme-light .editor-viewport.is-focused .vditor-sv {
+  background-color: #e2e8f0 !important;
+}
+
+.vditor,
+.vditor-content,
+.vditor-reset,
+.vditor-ir,
+.vditor-wysiwyg,
+.vditor-sv {
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Unify editor background across viewport, container and reset to seamless #12151b */
+.editor-viewport,
+.vditor,
+.vditor-content,
+.vditor-ir,
+.vditor-wysiwyg,
+.vditor-sv,
+.vditor-reset {
+  background-color: var(--bg-primary) !important;
+  border: none !important;
+}
+
+body.theme-light .editor-viewport,
+body.theme-light .vditor,
+body.theme-light .vditor-content,
+body.theme-light .vditor-ir,
+body.theme-light .vditor-wysiwyg,
+body.theme-light .vditor-sv,
+body.theme-light .vditor-reset {
+  background-color: var(--bg-primary) !important;
+  border: none !important;
 }
 
 #vditor-container {
   border: none !important;
   height: 100% !important;
+  background-color: transparent !important;
 }
 
-/* Customizing Vditor toolbar for engineering alignment */
+/* Floating Island / Capsule Toolbar (Sticky, Centered with Document Content) */
 .vditor-toolbar {
-  background-color: var(--bg-surface) !important;
-  border-bottom: 1px solid var(--border-color) !important;
-  padding: 4px 12px !important;
+  position: sticky !important;
+  top: 10px !important;
+  z-index: 100 !important;
+  display: flex !important;
+  align-items: center !important;
+  align-self: center !important;
+  width: fit-content !important;
+  max-width: min(1060px, calc(100% - 32px)) !important;
+  margin: 10px auto 8px auto !important;
+  padding: 4px 10px !important;
+  background-color: rgba(24, 24, 27, 0.96) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(63, 63, 70, 0.7) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.2s ease !important;
+  overflow: visible !important;
+  flex-shrink: 0 !important;
+}
+
+body.theme-light .vditor-toolbar {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid rgba(203, 213, 225, 0.8) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.mode-full-width .vditor-toolbar {
+  max-width: calc(100% - 48px) !important;
+}
+
+.vditor-toolbar::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Force all floating toolbar tooltips to render downwards (South) so they are never clipped by the top edge */
+.vditor-toolbar .vditor-tooltipped::after {
+  top: 100% !important;
+  bottom: auto !important;
+  margin-top: 8px !important;
+  margin-bottom: 0 !important;
+  right: 50% !important;
+  transform: translateX(50%) !important;
+  left: auto !important;
+  background-color: #1e1e24 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(82, 82, 91, 0.7) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.15) !important;
+  border-radius: 6px !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  padding: 5px 9px !important;
+  letter-spacing: 0.2px !important;
+  z-index: 1000000 !important;
+}
+
+.vditor-toolbar .vditor-tooltipped::before {
+  top: auto !important;
+  bottom: -8px !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  right: 50% !important;
+  transform: translateX(50%) !important;
+  left: auto !important;
+  border-top-color: transparent !important;
+  border-bottom-color: #1e1e24 !important;
+  border-left-color: transparent !important;
+  border-right-color: transparent !important;
+  z-index: 1000001 !important;
+}
+
+body.theme-light .vditor-toolbar .vditor-tooltipped::after {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(63, 63, 70, 0.8) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25) !important;
+}
+
+body.theme-light .vditor-toolbar .vditor-tooltipped::before {
+  border-bottom-color: #18181b !important;
+}
+
+.vditor-toolbar .vditor-tooltipped__ne::after,
+.vditor-toolbar .vditor-tooltipped__se::after {
+  right: auto !important;
+  left: 50% !important;
+  margin-left: -15px !important;
+  transform: none !important;
+}
+
+.vditor-toolbar .vditor-tooltipped__nw::after,
+.vditor-toolbar .vditor-tooltipped__sw::after {
+  right: 50% !important;
+  left: auto !important;
+  margin-right: -15px !important;
+  transform: none !important;
+}
+
+.vditor-toolbar__item {
+  padding: 2px 4px !important;
+}
+
+.vditor-toolbar__item button {
+  padding: 4px !important;
+  border-radius: 4px !important;
+}
+
+.vditor-toolbar__item button:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+.vditor-toolbar__divider {
+  height: 18px !important;
+  margin: 0 4px !important;
+  border-left-color: var(--border-color) !important;
 }
 
 .vditor-reset {
@@ -2507,7 +3024,7 @@ body, html {
 }
 
 /* ==========================================================================
-   Reader Mode (沉浸纯净阅读视图)
+   Reader Mode (沉浸纯净阅读视图 - 880px 严格对称居中黄金版心)
    ========================================================================== */
 body.reader-mode .app-header {
   display: none !important;
@@ -2523,6 +3040,19 @@ body.reader-mode .app-statusbar {
 
 body.reader-mode .app-workspace {
   height: 100vh !important;
+  width: 100% !important;
+}
+
+body.reader-mode .editor-viewport {
+  height: 100vh !important;
+  width: 100% !important;
+  background-color: var(--bg-primary) !important;
+}
+
+body.reader-mode .vditor {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100vh !important;
 }
 
 body.reader-mode .vditor-toolbar {
@@ -2530,9 +3060,35 @@ body.reader-mode .vditor-toolbar {
 }
 
 body.reader-mode .vditor-content {
-  max-width: 860px !important;
-  margin: 0 auto !important;
-  padding: 40px 20px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body.reader-mode .vditor-ir {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+body.reader-mode .vditor-reset {
+  max-width: 880px !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding: 48px 32px 120px 32px !important;
+  box-sizing: border-box !important;
+  font-size: 16px !important;
+  line-height: 1.8 !important;
+}
+
+body.reader-mode .vditor-reset > * {
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 
 /* Floating Exit Button for Reader Mode */
@@ -2667,7 +3223,7 @@ body.reader-mode .btn-floating-exit-reader {
    Print Styles for PDF Export
    ========================================================================== */
 @media print {
-  .app-header, .outline-sidebar, .app-statusbar, .recovery-banner, .btn-floating-exit-reader, .vditor-toolbar {
+  .app-header, .ms-float-outline-container, .outline-sidebar, .app-statusbar, .recovery-banner, .btn-floating-exit-reader, .vditor-toolbar {
     display: none !important;
   }
   body, html, .app-workspace, .editor-viewport, .vditor-content {
@@ -2856,11 +3412,6 @@ body.ms-resizing-col * {
         <span>Mark Scope</span>
       </div>
 
-      <div class="file-title-wrapper" title="当前正在编辑的文件">
-        <span id="current-doc-title">欢迎体验_MarkScope.md</span>
-        <span id="file-dirty-indicator" class="file-dirty-badge" title="有未保存修改">●</span>
-      </div>
-
       <!-- File Operations -->
       <button id="btn-open-file" class="btn-cta" title="打开本地 Markdown 文件 (Ctrl+O)">
         <span>📂 打开</span>
@@ -2888,20 +3439,16 @@ body.ms-resizing-col * {
       </div>
     </div>
 
-    <!-- Center: Mode Switchers -->
-    <div class="header-center">
-      <div class="mode-switch-group">
-        <button class="mode-btn active" data-mode="ir" title="即时渲染 (Typora 式行内实时排版)">即时渲染</button>
-        <button class="mode-btn" data-mode="wysiwyg" title="所见即所得 (完全富文本排版)">所见即所得</button>
-        <button class="mode-btn" data-mode="sv" title="分屏预览 (传统双栏对照)">分屏对照</button>
+    <!-- Window-Centered File Title (Decoupled from Left & Right Buttons) -->
+    <div class="header-window-center">
+      <div class="file-title-wrapper" title="当前正在编辑的文件">
+        <span id="current-doc-title">欢迎体验_MarkScope.md</span>
+        <span id="file-dirty-indicator" class="file-dirty-badge" title="有未保存修改">●</span>
       </div>
     </div>
 
     <!-- Right: View & Theme Controls -->
     <div class="header-right">
-      <button id="btn-toggle-outline" class="btn-cta active" title="显示/隐藏侧边大纲目录">
-        <span>📑 大纲</span>
-      </button>
       <button id="btn-toggle-full-width" class="btn-cta" title="切换正文全宽模式 / 标准舒适阅读宽度">
         <span>📏 全宽</span>
       </button>
@@ -2916,37 +3463,78 @@ body.ms-resizing-col * {
 
   <!-- Main Workspace -->
   <main class="app-workspace">
-    <!-- Collapsible Outline Sidebar -->
-    <aside id="outline-sidebar" class="outline-sidebar">
-      <div class="outline-header">
-        <span>文档大纲 (ToC)</span>
-        <button id="btn-collapse-sidebar" class="btn-icon-subtle" title="折叠侧边栏">◀</button>
-      </div>
-      <div id="outline-tree" class="outline-tree"></div>
-    </aside>
-
-    <!-- Editor Viewport -->
+    <!-- Editor Viewport (Full width available) -->
     <section class="editor-viewport">
       <div id="vditor-container"></div>
     </section>
   </main>
 
-  <!-- Bottom Statusbar (HUD) -->
+  <!-- Floating Right-hand Outline & Stats Widget -->
+  <aside id="ms-float-outline-container" class="ms-float-outline-container">
+    <!-- Collapsed State: Vertical Dashes (Screenshot 2) -->
+    <div id="ms-outline-dashes" class="ms-outline-dashes" title="悬停展开大纲与统计面板"></div>
+
+    <!-- Expanded State: Floating Panel (Screenshot 1) -->
+    <div id="ms-outline-panel" class="ms-outline-panel">
+      <!-- Panel Header with Tabs & Pin -->
+      <div class="ms-panel-header">
+        <div class="ms-tab-group">
+          <button id="tab-btn-outline" class="ms-tab-btn active" title="大纲目录">
+            <span class="tab-icon">T</span>
+            <span class="tab-label">Outline</span>
+          </button>
+          <button id="tab-btn-stats" class="ms-tab-btn" title="文档统计">
+            <svg class="tab-icon" viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+              <path d="M4 19h16v2H4zm3-4h2v4H7zm4-8h2v12h-2zm4 4h2v8h-2z"/>
+            </svg>
+            <span class="tab-label">Stats</span>
+          </button>
+        </div>
+        <button id="btn-pin-outline" class="ms-pin-btn" title="固定面板 (保持显现) / 再次点击取消固定">
+          <svg class="pin-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M16 9V4l1 0V2H7v2l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1.03 1 1.03-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Tab View 1: Outline with 6-level Heading Filter -->
+      <div id="view-tab-outline" class="ms-tab-view active">
+        <!-- 6-level Heading Filter Slider Track -->
+        <div class="level-filter-wrapper" title="点击选择大纲显示的最大标题层级 (H1~H6)">
+          <div class="level-track-bg"></div>
+          <div id="level-track-fill" class="level-track-fill"></div>
+          <div class="level-dots-container">
+            <button class="level-dot active" data-level="1" title="仅显示到 H1">1</button>
+            <button class="level-dot active" data-level="2" title="显示到 H2">2</button>
+            <button class="level-dot active" data-level="3" title="显示到 H3">3</button>
+            <button class="level-dot active" data-level="4" title="显示到 H4">4</button>
+            <button class="level-dot active" data-level="5" title="显示到 H5">5</button>
+            <button class="level-dot active" data-level="6" title="显示到 H6">6</button>
+          </div>
+        </div>
+        <!-- Dynamic Outline Tree -->
+        <div id="float-outline-list" class="float-outline-list"></div>
+      </div>
+
+      <!-- Tab View 2: Stats (仿照大纲形式，每行一项指标) -->
+      <div id="view-tab-stats" class="ms-tab-view">
+        <div class="float-stats-list">
+          <div class="stats-row"><span class="stats-label">字数：</span><span id="stat-val-words" class="stats-value">0</span></div>
+          <div class="stats-row"><span class="stats-label">句数：</span><span id="stat-val-sentences" class="stats-value">0</span></div>
+          <div class="stats-row"><span class="stats-label">段数：</span><span id="stat-val-paragraphs" class="stats-value">0</span></div>
+          <div class="stats-row"><span class="stats-label">字符数：</span><span id="stat-val-chars" class="stats-value">0</span></div>
+          <div class="stats-row"><span class="stats-label">最后保存：</span><span id="stat-val-last-saved" class="stats-value">-</span></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Bottom Statusbar (HUD - Simplified) -->
   <footer class="app-statusbar">
     <div class="statusbar-left">
       <span id="stat-save-status" class="status-item status-clean">✓ 已存盘</span>
       <span>|</span>
       <span class="status-item">UTF-8</span>
-    </div>
-
-    <div class="statusbar-center">
-      <span id="stat-chars">0 字符</span>
-      <span>•</span>
-      <span id="stat-words">0 词</span>
-      <span>•</span>
-      <span id="stat-lines">1 行</span>
-      <span>•</span>
-      <span id="stat-time">约 1 分钟阅读</span>
     </div>
 
     <div class="statusbar-right">
@@ -11142,53 +11730,195 @@ class FileIO {
 }
 
     /**
- * Mark Scope - Outline / Table of Contents (ToC) Manager
- * Generates dynamic hierarchical navigation tree from Markdown headings,
- * supports smooth scrolling jumps, active heading highlighting, and collapsible sidebar.
+ * Mark Scope - Advanced Floating Outline & Stats Widget
+ * 1. Collapsed state: Vertical minimalist dash bars mapping top-2 levels of headings (Screenshot 2)
+ *    - Highest level: Full-length dashes (.level-top)
+ *    - Second level: Shorter, indented dashes (.level-sub)
+ * 2. Single-point active dash highlighting in pure white; non-active in dark grey, syncing in real-time with scroll
+ * 3. Expanded floating panel with rounded frosted dark surface (Screenshot 1)
+ * 4. Dual Tabs: [T Outline] and [📊 Stats]
+ * 5. Outline tab: Default depth set to H3; 6-level interactive slider track (H1~H6) & hierarchical indented tree
+ * 6. Stats tab: Clean line-by-line metrics (Words, Sentences, Paragraphs, Characters, Last Saved)
+ * 7. Pinned (📌) state & Hover auto-reveal/collapse
  */
 class OutlineManager {
   constructor(app) {
     this.app = app;
-    this.isCollapsed = false;
     this.headings = [];
+    this.dashHeadings = []; // Top 2 levels of headings
+    this.isPinned = false;
+    this.currentTab = 'outline'; // 'outline' | 'stats'
+    this.maxHeadingLevel = 3; // Requirement 2: Default depth set to H3
+    this.activeHeadingIndex = 0;
+    this.activeDashIndex = 0;
     this.updateDebounceTimer = null;
+    this.scrollThrottleTimer = null;
+    this.isMouseInside = false;
   }
 
   init() {
-    this.bindSidebarToggle();
+    this.bindPanelEvents();
+    this.bindTabs();
+    this.bindLevelFilter();
+    this.bindScrollListener();
   }
 
-  bindSidebarToggle() {
-    const toggleBtn = document.getElementById('btn-toggle-outline');
-    const collapseIconBtn = document.getElementById('btn-collapse-sidebar');
-    const sidebar = document.getElementById('outline-sidebar');
+  // Bind hover and pin actions
+  bindPanelEvents() {
+    const container = document.getElementById('ms-float-outline-container');
+    const pinBtn = document.getElementById('btn-pin-outline');
 
-    const doToggle = () => {
-      this.isCollapsed = !this.isCollapsed;
-      if (this.isCollapsed) {
-        sidebar.classList.add('collapsed');
-        if (toggleBtn) toggleBtn.classList.remove('active');
-      } else {
-        sidebar.classList.remove('collapsed');
-        if (toggleBtn) toggleBtn.classList.add('active');
-        this.refreshOutline();
+    if (!container) return;
+
+    // Hover reveal and collapse
+    container.addEventListener('mouseenter', () => {
+      this.isMouseInside = true;
+      if (!this.isPinned) {
+        container.classList.add('is-open');
       }
-    };
+    });
 
-    if (toggleBtn) toggleBtn.addEventListener('click', doToggle);
-    if (collapseIconBtn) collapseIconBtn.addEventListener('click', doToggle);
+    container.addEventListener('mouseleave', () => {
+      this.isMouseInside = false;
+      if (!this.isPinned) {
+        container.classList.remove('is-open');
+      }
+    });
+
+    // Pin button toggle
+    if (pinBtn) {
+      pinBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.togglePin();
+      });
+    }
   }
 
-  // Triggered on content change to update heading tree
+  togglePin() {
+    this.isPinned = !this.isPinned;
+    const container = document.getElementById('ms-float-outline-container');
+    const pinBtn = document.getElementById('btn-pin-outline');
+
+    if (container) {
+      container.classList.toggle('is-pinned', this.isPinned);
+      if (!this.isPinned && !this.isMouseInside) {
+        container.classList.remove('is-open');
+      }
+    }
+
+    if (pinBtn) {
+      pinBtn.classList.toggle('pinned', this.isPinned);
+    }
+
+    if (this.isPinned) {
+      this.app.showToast('已固定右侧大纲面板', 'info');
+    }
+  }
+
+  // Bind Outline & Stats Tabs
+  bindTabs() {
+    const outlineTabBtn = document.getElementById('tab-btn-outline');
+    const statsTabBtn = document.getElementById('tab-btn-stats');
+    const outlineView = document.getElementById('view-tab-outline');
+    const statsView = document.getElementById('view-tab-stats');
+
+    if (outlineTabBtn && statsTabBtn) {
+      outlineTabBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.switchTab('outline');
+      });
+
+      statsTabBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.switchTab('stats');
+      });
+    }
+  }
+
+  switchTab(tabName) {
+    this.currentTab = tabName;
+    const outlineTabBtn = document.getElementById('tab-btn-outline');
+    const statsTabBtn = document.getElementById('tab-btn-stats');
+    const outlineView = document.getElementById('view-tab-outline');
+    const statsView = document.getElementById('view-tab-stats');
+
+    if (tabName === 'outline') {
+      if (outlineTabBtn) outlineTabBtn.classList.add('active');
+      if (statsTabBtn) statsTabBtn.classList.remove('active');
+      if (outlineView) outlineView.classList.add('active');
+      if (statsView) statsView.classList.remove('active');
+    } else {
+      if (statsTabBtn) statsTabBtn.classList.add('active');
+      if (outlineTabBtn) outlineTabBtn.classList.remove('active');
+      if (statsView) statsView.classList.add('active');
+      if (outlineView) outlineView.classList.remove('active');
+      if (this.app.statusbar) {
+        this.app.statusbar.updateStatsTab(this.app.getContent());
+      }
+    }
+  }
+
+  // Bind 6-Level Slider Dots & Active Track Fill
+  bindLevelFilter() {
+    const dotsContainer = document.querySelector('.level-dots-container');
+    if (!dotsContainer) return;
+
+    const dots = dotsContainer.querySelectorAll('.level-dot');
+    dots.forEach((dot) => {
+      dot.addEventListener('click', (e) => {
+        e.preventDefault();
+        const level = parseInt(dot.getAttribute('data-level')) || 3;
+        this.setLevelFilter(level);
+      });
+    });
+
+    // Default to Level 3 (Requirement 2)
+    this.updateLevelTrackUI(this.maxHeadingLevel);
+  }
+
+  setLevelFilter(level) {
+    this.maxHeadingLevel = level;
+    this.updateLevelTrackUI(level);
+    this.applyLevelFilterToTree();
+  }
+
+  updateLevelTrackUI(level) {
+    const dots = document.querySelectorAll('.level-dot');
+    const fill = document.getElementById('level-track-fill');
+
+    dots.forEach((dot) => {
+      const dotLevel = parseInt(dot.getAttribute('data-level'));
+      dot.classList.toggle('active', dotLevel <= level);
+    });
+
+    if (fill) {
+      // Calculate percentage width: level 1 = 0%, level 6 = 100%
+      const pct = ((level - 1) / 5) * 100;
+      fill.style.width = `${pct}%`;
+    }
+  }
+
+  applyLevelFilterToTree() {
+    const items = document.querySelectorAll('.float-outline-item');
+    items.forEach((item) => {
+      const itemLevel = parseInt(item.getAttribute('data-level'));
+      item.style.display = itemLevel <= this.maxHeadingLevel ? 'flex' : 'none';
+    });
+  }
+
+  // Triggered on document content update
   onContentChange(content) {
-    if (this.isCollapsed) return;
     clearTimeout(this.updateDebounceTimer);
     this.updateDebounceTimer = setTimeout(() => {
       this.extractAndRenderHeadings(content);
-    }, 400);
+      if (this.app.statusbar) {
+        this.app.statusbar.updateStatsTab(content);
+      }
+    }, 250);
   }
 
-  // Extract Markdown headings H1-H6 from text
+  // Extract H1~H6 Markdown headings
   extractAndRenderHeadings(content) {
     const lines = content.split('\n');
     const headings = [];
@@ -11215,49 +11945,175 @@ class OutlineManager {
     });
 
     this.headings = headings;
-    this.renderTree(headings);
+
+    // Requirement 1: Extract top 2 levels of headings in doc
+    const uniqueLevels = Array.from(new Set(headings.map(h => h.level))).sort((a, b) => a - b);
+    const topLevel1 = uniqueLevels[0] || 1;
+    const topLevel2 = uniqueLevels[1] !== undefined ? uniqueLevels[1] : null;
+
+    this.dashHeadings = headings.filter(h => h.level === topLevel1 || (topLevel2 !== null && h.level === topLevel2)).map(h => ({
+      ...h,
+      isTop: h.level === topLevel1,
+      dashClass: h.level === topLevel1 ? 'level-top' : 'level-sub'
+    }));
+
+    this.renderDashes();
+    this.renderOutlineTree();
+    this.updateActiveHeadingOnScroll();
   }
 
-  renderTree(headings) {
-    const treeContainer = document.getElementById('outline-tree');
-    if (!treeContainer) return;
+  // Render Collapsed Vertical Dashes (Top 2 levels)
+  renderDashes() {
+    const container = document.getElementById('ms-outline-dashes');
+    if (!container) return;
 
-    if (headings.length === 0) {
-      treeContainer.innerHTML = '<div class="outline-empty">暂无文档大纲标题<br><small style="color:var(--text-muted)">输入 # 标题 即可生成大纲</small></div>';
+    if (this.dashHeadings.length === 0) {
+      container.innerHTML = '<div class="ms-dash level-top" title="暂无标题"></div>';
       return;
     }
 
     let html = '';
-    headings.forEach((h, idx) => {
-      const indentClass = `level-${h.level}`;
+    this.dashHeadings.forEach((h, idx) => {
+      const isActive = (idx === this.activeDashIndex);
+      html += `<div class="ms-dash ${h.dashClass} ${isActive ? 'active' : ''}" data-dash-index="${idx}" title="H${h.level} ${h.text}"></div>`;
+    });
+
+    container.innerHTML = html;
+
+    const dashes = container.querySelectorAll('.ms-dash');
+    dashes.forEach((dash) => {
+      dash.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idx = parseInt(dash.getAttribute('data-dash-index'));
+        if (this.dashHeadings[idx]) {
+          this.scrollToHeading(this.dashHeadings[idx]);
+        }
+      });
+    });
+  }
+
+  // Render Expanded Outline Tree
+  renderOutlineTree() {
+    const listContainer = document.getElementById('float-outline-list');
+    if (!listContainer) return;
+
+    if (this.headings.length === 0) {
+      listContainer.innerHTML = '<div class="float-outline-empty">暂无文档标题<br><small style="color:#71717a">输入 # 标题 即可生成大纲</small></div>';
+      return;
+    }
+
+    let html = '';
+    this.headings.forEach((h, idx) => {
+      const isVisible = h.level <= this.maxHeadingLevel;
       html += `
-        <div class="outline-item ${indentClass}" data-index="${idx}" data-line="${h.line}" title="${h.text}">
-          <span class="outline-level-tag">H${h.level}</span>
+        <div class="float-outline-item level-${h.level} ${idx === this.activeHeadingIndex ? 'active' : ''}"
+             data-index="${idx}"
+             data-level="${h.level}"
+             style="display: ${isVisible ? 'flex' : 'none'}"
+             title="${h.text}">
           <span class="outline-title-text">${h.text}</span>
         </div>
       `;
     });
 
-    treeContainer.innerHTML = html;
+    listContainer.innerHTML = html;
 
-    // Attach click listeners to jump to headings
-    const items = treeContainer.querySelectorAll('.outline-item');
-    items.forEach(item => {
-      item.addEventListener('click', () => {
-        items.forEach(el => el.classList.remove('active'));
-        item.classList.add('active');
+    const items = listContainer.querySelectorAll('.float-outline-item');
+    items.forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
         const idx = parseInt(item.getAttribute('data-index'));
-        this.scrollToHeading(headings[idx]);
+        if (this.headings[idx]) {
+          this.scrollToHeading(this.headings[idx]);
+        }
       });
     });
   }
 
-  // Smooth scroll to target heading in Vditor editor area
+  // Requirement 4: Robust, Multi-container Scroll Listener
+  bindScrollListener() {
+    const onScroll = () => {
+      this.updateActiveHeadingOnScroll();
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    document.addEventListener('scroll', onScroll, { passive: true });
+
+    // Continuously monitor and attach to Vditor's inner scrollable containers
+    const attachVditorScrollers = () => {
+      const scrollers = document.querySelectorAll(
+        '.vditor-content, .vditor-ir, .vditor-reset, .vditor-wysiwyg, .vditor-sv, .editor-viewport'
+      );
+      scrollers.forEach((el) => {
+        if (!el.__ms_scroll_attached) {
+          el.__ms_scroll_attached = true;
+          el.addEventListener('scroll', onScroll, { passive: true });
+        }
+      });
+    };
+
+    [50, 150, 400, 1000].forEach((delay) => setTimeout(attachVditorScrollers, delay));
+  }
+
+  // Calculate active heading & single-dash highlight based on current viewport
+  updateActiveHeadingOnScroll() {
+    if (this.headings.length === 0) return;
+
+    const editorEl = document.getElementById('vditor-container');
+    if (!editorEl) return;
+
+    const domHeadings = Array.from(editorEl.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+    if (domHeadings.length === 0) return;
+
+    let activeHeadingItem = this.headings[0];
+    let activeHeadingIdx = 0;
+    const viewThreshold = 180; // Distance from top of viewport
+
+    for (let i = 0; i < domHeadings.length; i++) {
+      const rect = domHeadings[i].getBoundingClientRect();
+      if (rect.top <= viewThreshold) {
+        activeHeadingIdx = i;
+        activeHeadingItem = this.headings[i] || activeHeadingItem;
+      } else {
+        break;
+      }
+    }
+
+    this.activeHeadingIndex = activeHeadingIdx;
+
+    // Highlight in outline list
+    const items = document.querySelectorAll('.float-outline-item');
+    items.forEach((item, idx) => {
+      item.classList.toggle('active', idx === activeHeadingIdx);
+    });
+
+    // Requirement 1 & 4: Highlight single active dash in top 2 levels
+    if (this.dashHeadings.length > 0 && activeHeadingItem) {
+      let activeDashIdx = 0;
+      for (let d = 0; d < this.dashHeadings.length; d++) {
+        if (this.dashHeadings[d].line <= activeHeadingItem.line) {
+          activeDashIdx = d;
+        } else {
+          break;
+        }
+      }
+
+      this.activeDashIndex = activeDashIdx;
+
+      // Update dashes highlight (only 1 active white dash!)
+      const dashes = document.querySelectorAll('.ms-dash');
+      dashes.forEach((dash, idx) => {
+        dash.classList.toggle('active', idx === activeDashIdx);
+      });
+    }
+  }
+
+  // Smooth scroll to target heading
   scrollToHeading(heading) {
     const container = document.getElementById('vditor-container');
     if (!container) return;
 
-    // Look for heading element in Vditor DOM (IR / WYSIWYG / SV)
     const domHeadings = container.querySelectorAll(`h${heading.level}`);
     let targetEl = null;
 
@@ -11270,7 +12126,6 @@ class OutlineManager {
 
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Brief highlight animation
       targetEl.classList.add('heading-jump-highlight');
       setTimeout(() => targetEl.classList.remove('heading-jump-highlight'), 1200);
     }
@@ -11639,22 +12494,25 @@ class TableManager {
 }
 
     /**
- * Mark Scope - Statusbar HUD Manager
+ * Mark Scope - Statusbar & Stats Manager
  * Calculates real-time document metrics:
- * - Character count (Total & non-space)
  * - Word count (CJK characters + Western words)
- * - Line count
- * - Estimated reading time
+ * - Sentence count (句数)
+ * - Paragraph count (段数)
+ * - Character count (字符数)
+ * - Last Saved Timestamp (最后保存，采用本地时间格式)
  * - Mode indicator & File save status
  */
 class StatusbarManager {
   constructor(app) {
     this.app = app;
     this.updateDebounceTimer = null;
+    this.lastSavedDate = new Date();
   }
 
   init() {
     this.updateMetrics('');
+    this.updateLastSavedTime(new Date());
   }
 
   onContentChange(content, immediate = false) {
@@ -11670,34 +12528,56 @@ class StatusbarManager {
   }
 
   updateMetrics(text) {
-    const totalChars = text.length;
-    const nonSpaceChars = text.replace(/\s/g, '').length;
-    
-    // Words count: English words + CJK characters
-    const cjkMatches = text.match(/[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/g);
+    const raw = text || '';
+    const totalChars = raw.length;
+
+    // Word count: English words + CJK characters
+    const cjkMatches = raw.match(/[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/g);
     const cjkCount = cjkMatches ? cjkMatches.length : 0;
-    
-    const westernMatches = text.replace(/[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/g, ' ').match(/[a-zA-Z0-9_\-]+/g);
+    const westernMatches = raw.replace(/[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/g, ' ').match(/[a-zA-Z0-9_\-]+/g);
     const westernWordCount = westernMatches ? westernMatches.length : 0;
-    
     const totalWords = cjkCount + westernWordCount;
-    
-    // Line count
-    const lines = text ? text.split('\n').length : 1;
-    
-    // Reading time: standard ~300 words/minute
-    const readMinutes = Math.max(1, Math.ceil(totalWords / 300));
 
-    // Update DOM
-    const charEl = document.getElementById('stat-chars');
-    const wordEl = document.getElementById('stat-words');
-    const lineEl = document.getElementById('stat-lines');
-    const timeEl = document.getElementById('stat-time');
+    // Sentence count (句数): Chinese full stops/exclamations/questions, Western periods/exclamations/questions
+    const sentenceList = raw.trim() ? raw.split(/[。！？!?\n]+/).filter(s => s.trim().length > 0) : [];
+    const sentenceCount = sentenceList.length;
 
-    if (charEl) charEl.textContent = `${totalChars.toLocaleString()} 字符`;
-    if (wordEl) wordEl.textContent = `${totalWords.toLocaleString()} 词`;
-    if (lineEl) lineEl.textContent = `${lines.toLocaleString()} 行`;
-    if (timeEl) timeEl.textContent = `约 ${readMinutes} 分钟阅读`;
+    // Paragraph count (段数): Double newline or non-empty blocks
+    const paragraphList = raw.trim() ? raw.split(/\n\s*\n/).filter(p => p.trim().length > 0) : [];
+    const paragraphCount = paragraphList.length || (raw.trim() ? 1 : 0);
+
+    // Update Floating Panel [Stats] tab
+    this.updateStatsTabElements(totalWords, sentenceCount, paragraphCount, totalChars);
+  }
+
+  updateStatsTab(text) {
+    this.updateMetrics(text);
+  }
+
+  updateStatsTabElements(words, sentences, paragraphs, chars) {
+    const wordEl = document.getElementById('stat-val-words');
+    const sentEl = document.getElementById('stat-val-sentences');
+    const paraEl = document.getElementById('stat-val-paragraphs');
+    const charEl = document.getElementById('stat-val-chars');
+
+    if (wordEl) wordEl.textContent = words.toLocaleString();
+    if (sentEl) sentEl.textContent = sentences.toLocaleString();
+    if (paraEl) paraEl.textContent = paragraphs.toLocaleString();
+    if (charEl) charEl.textContent = chars.toLocaleString();
+  }
+
+  updateLastSavedTime(date = new Date()) {
+    this.lastSavedDate = date;
+    const savedEl = document.getElementById('stat-val-last-saved');
+    if (!savedEl) return;
+
+    try {
+      // Local computer/browser locale format: YYYY/MM/DD HH:mm:ss or locale specific
+      const formatted = date.toLocaleString();
+      savedEl.textContent = formatted;
+    } catch (e) {
+      savedEl.textContent = date.toISOString().replace('T', ' ').substring(0, 19);
+    }
   }
 
   updateMode(mode) {
@@ -11720,6 +12600,7 @@ class StatusbarManager {
     } else {
       saveStatusEl.textContent = '✓ 已存盘';
       saveStatusEl.className = 'status-item status-clean';
+      this.updateLastSavedTime(new Date());
     }
   }
 
@@ -11763,6 +12644,7 @@ class MarkScopeApp {
     this.statusbar.init();
     this.draftManager.init();
     this.tableManager.init();
+    this.initPWA();
   }
 
   // Initialize Vditor in offline self-contained configuration
@@ -11853,6 +12735,14 @@ mark_scope_guard()
       cache: {
         enable: false
       },
+      focus: () => {
+        const vp = document.querySelector('.editor-viewport');
+        if (vp) vp.classList.add('is-focused');
+      },
+      blur: () => {
+        const vp = document.querySelector('.editor-viewport');
+        if (vp) vp.classList.remove('is-focused');
+      },
       input: (value) => {
         this.draftManager.onContentChange(value);
         this.outline.onContentChange(value);
@@ -11865,6 +12755,8 @@ mark_scope_guard()
         this.outline.refreshOutline();
         this.statusbar.onContentChange(defaultMarkdown, true);
         this.statusbar.updateMode(this.currentMode);
+        this.initEditorFocusTracker();
+        this.mountModeSwitchToToolbar();
         setTimeout(() => this.tableManager.enhanceAllTables(), 100);
       }
     });
@@ -12020,6 +12912,14 @@ mark_scope_guard()
       cache: {
         enable: false
       },
+      focus: () => {
+        const vp = document.querySelector('.editor-viewport');
+        if (vp) vp.classList.add('is-focused');
+      },
+      blur: () => {
+        const vp = document.querySelector('.editor-viewport');
+        if (vp) vp.classList.remove('is-focused');
+      },
       input: (val) => {
         this.draftManager.onContentChange(val);
         this.outline.onContentChange(val);
@@ -12028,7 +12928,68 @@ mark_scope_guard()
       after: () => {
         this.statusbar.updateMode(mode);
         this.outline.refreshOutline();
+        this.initEditorFocusTracker();
+        this.mountModeSwitchToToolbar();
         setTimeout(() => this.tableManager.enhanceAllTables(), 100);
+      }
+    });
+  }
+
+  // Ensure mode switch group exists and is up to date
+  ensureModeSwitchGroup() {
+    let modeGroup = document.getElementById('mode-switch-group');
+    if (!modeGroup) {
+      modeGroup = document.createElement('div');
+      modeGroup.id = 'mode-switch-group';
+      modeGroup.className = 'mode-switch-group';
+      modeGroup.innerHTML = `
+        <button class="mode-btn ${this.currentMode === 'ir' ? 'active' : ''}" data-mode="ir" title="即时渲染 (Typora 式行内实时排版)">即时渲染</button>
+        <button class="mode-btn ${this.currentMode === 'wysiwyg' ? 'active' : ''}" data-mode="wysiwyg" title="所见即所得 (完全富文本排版)">所见即所得</button>
+        <button class="mode-btn ${this.currentMode === 'sv' ? 'active' : ''}" data-mode="sv" title="分屏预览 (传统双栏对照)">分屏对照</button>
+      `;
+      modeGroup.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const targetMode = btn.getAttribute('data-mode');
+          this.switchEditorMode(targetMode);
+        });
+      });
+    } else {
+      modeGroup.querySelectorAll('.mode-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-mode') === this.currentMode);
+      });
+    }
+    return modeGroup;
+  }
+
+  // Mount mode switch buttons to the far left of floating Vditor toolbar
+  mountModeSwitchToToolbar() {
+    const toolbar = document.querySelector('.vditor-toolbar');
+    if (!toolbar) return;
+    const modeGroup = this.ensureModeSwitchGroup();
+    if (!toolbar.contains(modeGroup)) {
+      let divider = toolbar.querySelector('.mode-toolbar-divider');
+      if (!divider) {
+        divider = document.createElement('div');
+        divider.className = 'mode-toolbar-divider';
+      }
+      toolbar.prepend(divider);
+      toolbar.prepend(modeGroup);
+    }
+  }
+
+  // Track editor focus state to smoothly darken background
+  initEditorFocusTracker() {
+    const viewport = document.querySelector('.editor-viewport');
+    if (!viewport || viewport.dataset.focusTrackerBound) return;
+    viewport.dataset.focusTrackerBound = 'true';
+
+    viewport.addEventListener('focusin', () => {
+      viewport.classList.add('is-focused');
+    });
+    viewport.addEventListener('focusout', (e) => {
+      if (!viewport.contains(e.relatedTarget)) {
+        viewport.classList.remove('is-focused');
       }
     });
   }
@@ -12099,6 +13060,38 @@ mark_scope_guard()
         this.exitReaderMode();
       }
     });
+  }
+
+  // PWA Service Worker & File Handling API
+  initPWA() {
+    // Only register service worker over HTTPS or localhost, completely silent on file:///
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      window.addEventListener('load', () => {
+        const swPath = location.pathname.includes('/Deliverables/') ? '../sw.js' : './sw.js';
+        navigator.serviceWorker.register(swPath).then((reg) => {
+          console.log('[MarkScope] PWA Service Worker registered:', reg.scope);
+        }).catch((err) => {
+          console.warn('[MarkScope] SW registration note:', err);
+        });
+      });
+    }
+
+    // PWA File Handling API (opens .md files directly when launched as default app)
+    if ('launchQueue' in window && 'files' in window.LaunchParams.prototype) {
+      window.launchQueue.setConsumer(async (launchParams) => {
+        if (!launchParams.files || launchParams.files.length === 0) return;
+        try {
+          const fileHandle = launchParams.files[0];
+          const file = await fileHandle.getFile();
+          const text = await file.text();
+          this.fileIO.currentFileHandle = fileHandle;
+          this.loadDocument(text, file.name);
+          this.showToast(`已通过桌面文件关联打开: ${file.name}`, 'success');
+        } catch (err) {
+          console.error('[MarkScope] Failed to open file via launchQueue:', err);
+        }
+      });
+    }
   }
 
   // Toast Notification System
